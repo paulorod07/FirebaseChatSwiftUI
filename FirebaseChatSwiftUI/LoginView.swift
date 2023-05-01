@@ -9,15 +9,28 @@ import SwiftUI
 
 struct LoginView: View {
     
+    // MARK: - Properties
+    
     @State var isLoginMode = false
     @State var email = ""
     @State var password = ""
+    @State var statusMessage = ""
+    @State var user: ChatUser?
+    private let viewModel: LoginViewModel
+    
+    // MARK: - Initializer
+    
+    init(viewModel: LoginViewModel) {
+        self.viewModel = viewModel
+    }
+    
+    // MARK: - View
     
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 16) {
-                    Picker(selection: $isLoginMode, label: Text("aa")) {
+                    Picker(selection: $isLoginMode, label: Text("")) {
                         Text("Login")
                             .tag(true)
                         Text("Create Account")
@@ -46,7 +59,9 @@ struct LoginView: View {
                     .background(Color.white)
                     
                     Button {
-                        handleAction()
+                        Task {
+                            await handleAction()
+                        }
                     } label: {
                         HStack {
                             Spacer()
@@ -58,6 +73,9 @@ struct LoginView: View {
                         }
                         .background(Color.blue)
                     }
+                    
+                    Text(statusMessage)
+                        .foregroundColor(user != nil ? .green : .red)
                 }
                 .padding()
             }
@@ -65,13 +83,44 @@ struct LoginView: View {
             .background(Color(.init(white: 0, alpha: 0.05))
                 .ignoresSafeArea())
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
     
-    private func handleAction() {
+    // MARK: - Methods
+    
+    private func handleAction() async {
         if isLoginMode {
-            debugPrint("should login")
+            await login()
         } else {
-            debugPrint("should create account")
+            await createAccount()
+        }
+    }
+    
+    func login() async {
+        let (response, error) = await viewModel.login(with: email, and: password)
+        
+        if let error {
+            statusMessage = error.localizedDescription
+            return
+        }
+        
+        if let response {
+            user = response
+            statusMessage = "logado com sucesso \(response.id)"
+        }
+    }
+    
+    func createAccount() async {
+        let (response, error) = await viewModel.createAccount(with: email, and: password)
+        
+        if let error {
+            statusMessage = error.localizedDescription
+            return
+        }
+        
+        if let response {
+            user = response
+            statusMessage = "criado com sucesso \(response.id)"
         }
     }
     
@@ -79,6 +128,6 @@ struct LoginView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        LoginView()
+        LoginView(viewModel: FirebaseLoginViewModel())
     }
 }
